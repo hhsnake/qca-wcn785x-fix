@@ -1,0 +1,30 @@
+From 31cdbb09ee97e32c79214098550e24e7f03f56e2 Mon Sep 17 00:00:00 2001
+From: hhsnake <hhsnakeg@gmail.com>
+Date: Sun, 4 Oct 2026 17:28:08 +0300
+Subject: [PATCH 10/10] btusb: QCA: log the version fields the NVM name is
+ built from
+
+Local, not from mainline. Prints flag/chip_id/platform_id/ram_version
+next to the chosen NVM file, to tell whether the default NVM was picked
+because the board reports no board ID (on this machine: flag 0x8000,
+chip_id 0, platform_id 0 -> nvm_usb_00190200.bin).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ drivers/bluetooth/btusb.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/bluetooth/btusb.c b/drivers/bluetooth/btusb.c
+index 8f98727..eed5121 100644
+--- a/drivers/bluetooth/btusb.c
++++ b/drivers/bluetooth/btusb.c
+@@ -3959,6 +3959,9 @@ static int btusb_setup_qca_load_nvm(struct hci_dev *hdev,
+ 	}
+ 
+ 	bt_dev_info(hdev, "using NVM file: %s", fwname);
++	bt_dev_info(hdev, "QCA: flag 0x%04x chip_id 0x%02x platform_id 0x%02x ram 0x%08x",
++		    le16_to_cpu(ver->flag), ver->chip_id, ver->platform_id,
++		    le32_to_cpu(ver->ram_version));
+ 
+ 	err = btusb_setup_qca_download_fw(hdev, fw, info->nvm_hdr);
+ 

@@ -1,0 +1,10 @@
+0001-btusb-add-Qualcomm-WCN785x-0489-e10a.patch
+0002-btusb-QCA-treat-board-ID-0xffff-as-invalid-when-nami.patch
+0003-btusb-QCA-support-custom-made-firmware-subdirectorie.patch
+0004-btusb-QCA-allow-firmware-re-download-when-the-versio.patch
+0005-btusb-QCA-fix-short-read-errors-in-btusb_qca_send_ve.patch
+0006-btusb-QCA-fix-BD_ADDR-byte-order-in-btusb_set_bdaddr.patch
+0007-btusb-QCA-fix-memdump-double-free-kernel-BUG-in-hci_.patch
+0008-btusb-QCA-trigger-the-coredump-with-__hci_cmd_send.patch
+0009-btusb-QCA-pass-0x2EDC-debug-frames-to-the-monitor.patch
+0010-btusb-QCA-log-the-version-fields-the-NVM-name-is-bui.patch

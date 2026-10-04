@@ -1,0 +1,31 @@
+From 3d15a79d0e0e374ba764267d729ed4b472afa4a8 Mon Sep 17 00:00:00 2001
+From: hhsnake <hhsnakeg@gmail.com>
+Date: Sun, 4 Oct 2026 17:28:08 +0300
+Subject: [PATCH 01/10] btusb: add Qualcomm WCN785x 0489:e10a
+
+Backport of the 0489:e10a line from mainline 2dd1c1eee3e4 ("Bluetooth:
+btusb: Add 13 USB device IDs for Qualcomm WCN785x"), v6.15.
+
+BTUSB_VALID_LE_STATES is kept, as on the other WCN785x entry (0cf3:e700)
+in 6.8: mainline dropped the flag only when the quirk was inverted in
+6.11.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ drivers/bluetooth/btusb.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/bluetooth/btusb.c b/drivers/bluetooth/btusb.c
+index d31edad..7ddf978 100644
+--- a/drivers/bluetooth/btusb.c
++++ b/drivers/bluetooth/btusb.c
+@@ -404,6 +404,9 @@ static const struct usb_device_id quirks_table[] = {
+ 						     BTUSB_VALID_LE_STATES },
+ 
+ 	/* QCA WCN785x chipset */
++	{ USB_DEVICE(0x0489, 0xe10a), .driver_info = BTUSB_QCA_WCN6855 |
++						     BTUSB_WIDEBAND_SPEECH |
++						     BTUSB_VALID_LE_STATES },
+ 	{ USB_DEVICE(0x0cf3, 0xe700), .driver_info = BTUSB_QCA_WCN6855 |
+ 						     BTUSB_WIDEBAND_SPEECH |
+ 						     BTUSB_VALID_LE_STATES },

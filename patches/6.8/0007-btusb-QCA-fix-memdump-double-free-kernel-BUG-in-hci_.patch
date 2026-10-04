@@ -1,0 +1,201 @@
+From b1c55b1cc4299604e909b21f33ff10b8a7806498 Mon Sep 17 00:00:00 2001
+From: hhsnake <hhsnakeg@gmail.com>
+Date: Sun, 4 Oct 2026 17:28:08 +0300
+Subject: [PATCH 07/10] btusb: QCA: fix memdump double free (kernel BUG in
+ hci_devcd_rx)
+
+Backport of mainline
+  c27046c98bd2 ("Bluetooth: btusb: use skb_pull to avoid unsafe access
+                in QCA dump handling")
+  0317b033abcd ("Bluetooth: btusb: avoid NULL pointer dereference in
+                skb_dequeue()")
+in the form Ubuntu carries them in its 6.8 kernels (identical code, so on
+an Ubuntu base this patch is found already applied and skipped).
+
+Without it, the first packet of a firmware memdump is passed to both the
+devcoredump queue and hci_recv_frame() and freed twice:
+
+  Bluetooth: hci0: ACL memdump size(589824)
+  kernel BUG at mm/slub.c:553!
+  Workqueue: hci0 hci_devcd_rx [bluetooth]
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ drivers/bluetooth/btusb.c | 117 +++++++++++++++++++++++---------------
+ 1 file changed, 72 insertions(+), 45 deletions(-)
+
+diff --git a/drivers/bluetooth/btusb.c b/drivers/bluetooth/btusb.c
+index 900235a..54b4cc6 100644
+--- a/drivers/bluetooth/btusb.c
++++ b/drivers/bluetooth/btusb.c
+@@ -3474,55 +3474,27 @@ static void btusb_coredump_qca(struct hci_dev *hdev)
+ 	kfree_skb(skb);
+ }
+ 
+-/*
+- * ==0: not a dump pkt.
+- * < 0: fails to handle a dump pkt
+- * > 0: otherwise.
+- */
++/* Return: 0 on success, negative errno on failure. */
+ static int handle_dump_pkt_qca(struct hci_dev *hdev, struct sk_buff *skb)
+ {
+-	int ret = 1;
++	int ret = 0;
++	unsigned int skip = 0;
+ 	u8 pkt_type;
+-	u8 *sk_ptr;
+-	unsigned int sk_len;
+ 	u16 seqno;
+ 	u32 dump_size;
+ 
+-	struct hci_event_hdr *event_hdr;
+-	struct hci_acl_hdr *acl_hdr;
+ 	struct qca_dump_hdr *dump_hdr;
+ 	struct btusb_data *btdata = hci_get_drvdata(hdev);
+ 	struct usb_device *udev = btdata->udev;
+ 
+ 	pkt_type = hci_skb_pkt_type(skb);
+-	sk_ptr = skb->data;
+-	sk_len = skb->len;
+-
+-	if (pkt_type == HCI_ACLDATA_PKT) {
+-		acl_hdr = hci_acl_hdr(skb);
+-		if (le16_to_cpu(acl_hdr->handle) != QCA_MEMDUMP_ACL_HANDLE)
+-			return 0;
+-		sk_ptr += HCI_ACL_HDR_SIZE;
+-		sk_len -= HCI_ACL_HDR_SIZE;
+-		event_hdr = (struct hci_event_hdr *)sk_ptr;
+-	} else {
+-		event_hdr = hci_event_hdr(skb);
+-	}
+-
+-	if ((event_hdr->evt != HCI_VENDOR_PKT)
+-		|| (event_hdr->plen != (sk_len - HCI_EVENT_HDR_SIZE)))
+-		return 0;
+-
+-	sk_ptr += HCI_EVENT_HDR_SIZE;
+-	sk_len -= HCI_EVENT_HDR_SIZE;
++	skip = sizeof(struct hci_event_hdr);
++	if (pkt_type == HCI_ACLDATA_PKT)
++		skip += sizeof(struct hci_acl_hdr);
+ 
+-	dump_hdr = (struct qca_dump_hdr *)sk_ptr;
+-	if ((sk_len < offsetof(struct qca_dump_hdr, data))
+-		|| (dump_hdr->vse_class != QCA_MEMDUMP_VSE_CLASS)
+-	    || (dump_hdr->msg_type != QCA_MEMDUMP_MSG_TYPE))
+-		return 0;
++	skb_pull(skb, skip);
++	dump_hdr = (struct qca_dump_hdr *)skb->data;
+ 
+-	/*it is dump pkt now*/
+ 	seqno = le16_to_cpu(dump_hdr->seqno);
+ 	if (seqno == 0) {
+ 		set_bit(BTUSB_HW_SSR_ACTIVE, &btdata->flags);
+@@ -3542,16 +3514,15 @@ static int handle_dump_pkt_qca(struct hci_dev *hdev, struct sk_buff *skb)
+ 
+ 		btdata->qca_dump.ram_dump_size = dump_size;
+ 		btdata->qca_dump.ram_dump_seqno = 0;
+-		sk_ptr += offsetof(struct qca_dump_hdr, data0);
+-		sk_len -= offsetof(struct qca_dump_hdr, data0);
++
++		skb_pull(skb, offsetof(struct qca_dump_hdr, data0));
+ 
+ 		usb_disable_autosuspend(udev);
+ 		bt_dev_info(hdev, "%s memdump size(%u)\n",
+ 			    (pkt_type == HCI_ACLDATA_PKT) ? "ACL" : "event",
+ 			    dump_size);
+ 	} else {
+-		sk_ptr += offsetof(struct qca_dump_hdr, data);
+-		sk_len -= offsetof(struct qca_dump_hdr, data);
++		skb_pull(skb, offsetof(struct qca_dump_hdr, data));
+ 	}
+ 
+ 	if (!btdata->qca_dump.ram_dump_size) {
+@@ -3571,7 +3542,6 @@ static int handle_dump_pkt_qca(struct hci_dev *hdev, struct sk_buff *skb)
+ 		return ret;
+ 	}
+ 
+-	skb_pull(skb, skb->len - sk_len);
+ 	hci_devcd_append(hdev, skb);
+ 	btdata->qca_dump.ram_dump_seqno++;
+ 	if (seqno == QCA_LAST_SEQUENCE_NUM) {
+@@ -3596,17 +3566,74 @@ out:
+ 	return ret;
+ }
+ 
++/* Return: true if the ACL packet is a dump packet, false otherwise. */
++static bool acl_pkt_is_dump_qca(struct hci_dev *hdev, struct sk_buff *skb)
++{
++	struct hci_event_hdr *event_hdr;
++	struct hci_acl_hdr *acl_hdr;
++	struct qca_dump_hdr *dump_hdr;
++	struct sk_buff *clone = skb_clone(skb, GFP_ATOMIC);
++	bool is_dump = false;
++
++	if (!clone)
++		return false;
++
++	acl_hdr = skb_pull_data(clone, sizeof(*acl_hdr));
++	if (!acl_hdr || (le16_to_cpu(acl_hdr->handle) != QCA_MEMDUMP_ACL_HANDLE))
++		goto out;
++
++	event_hdr = skb_pull_data(clone, sizeof(*event_hdr));
++	if (!event_hdr || (event_hdr->evt != HCI_VENDOR_PKT))
++		goto out;
++
++	dump_hdr = skb_pull_data(clone, sizeof(*dump_hdr));
++	if (!dump_hdr || (dump_hdr->vse_class != QCA_MEMDUMP_VSE_CLASS) ||
++	   (dump_hdr->msg_type != QCA_MEMDUMP_MSG_TYPE))
++		goto out;
++
++	is_dump = true;
++out:
++	consume_skb(clone);
++	return is_dump;
++}
++
++/* Return: true if the event packet is a dump packet, false otherwise. */
++static bool evt_pkt_is_dump_qca(struct hci_dev *hdev, struct sk_buff *skb)
++{
++	struct hci_event_hdr *event_hdr;
++	struct qca_dump_hdr *dump_hdr;
++	struct sk_buff *clone = skb_clone(skb, GFP_ATOMIC);
++	bool is_dump = false;
++
++	if (!clone)
++		return false;
++
++	event_hdr = skb_pull_data(clone, sizeof(*event_hdr));
++	if (!event_hdr || (event_hdr->evt != HCI_VENDOR_PKT))
++		goto out;
++
++	dump_hdr = skb_pull_data(clone, sizeof(*dump_hdr));
++	if (!dump_hdr || (dump_hdr->vse_class != QCA_MEMDUMP_VSE_CLASS) ||
++	   (dump_hdr->msg_type != QCA_MEMDUMP_MSG_TYPE))
++		goto out;
++
++	is_dump = true;
++out:
++	consume_skb(clone);
++	return is_dump;
++}
++
+ static int btusb_recv_acl_qca(struct hci_dev *hdev, struct sk_buff *skb)
+ {
+-	if (handle_dump_pkt_qca(hdev, skb))
+-		return 0;
++	if (acl_pkt_is_dump_qca(hdev, skb))
++		return handle_dump_pkt_qca(hdev, skb);
+ 	return hci_recv_frame(hdev, skb);
+ }
+ 
+ static int btusb_recv_evt_qca(struct hci_dev *hdev, struct sk_buff *skb)
+ {
+-	if (handle_dump_pkt_qca(hdev, skb))
+-		return 0;
++	if (evt_pkt_is_dump_qca(hdev, skb))
++		return handle_dump_pkt_qca(hdev, skb);
+ 	return hci_recv_frame(hdev, skb);
+ }
+ 

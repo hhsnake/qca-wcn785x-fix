@@ -1,0 +1,22 @@
+Excerpt of linux-firmware WHENCE for the files in qca/ here.
+Source: https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git
+Commit: 225e865382d4 ("QCA: Update WCN785x btusb firmware to 2.0.0-00799-5")
+
+Driver: btusb - Qualcomm WCN785x USB (loaded by btusb_setup_qca)
+
+File: qca/rampatch_usb_00190200.bin
+Version: BTFW.HAMILTON.2.0.0-00799-USB_PATCHZ-5
+File: qca/nvm_usb_00190200.bin
+File: qca/nvm_usb_00190200_0104.bin
+File: qca/nvm_usb_00190200_0106.bin
+File: qca/nvm_usb_00190200_0108.bin
+File: qca/nvm_usb_00190200_0109.bin
+File: qca/nvm_usb_00190200_010a.bin
+File: qca/nvm_usb_00190200_010c.bin
+File: qca/nvm_usb_00190200_010e.bin
+File: qca/nvm_usb_00190200_0110.bin
+File: qca/nvm_usb_00190200_0111.bin
+File: qca/nvm_usb_00190200_0112.bin
+
+Licence: Redistributable. See LICENSE.QualcommAtheros_ath10k and NOTICE.qca for details
+SPDX-License-Identifier: LicenseRef-LICENSE.QualcommAtheros_ath10k

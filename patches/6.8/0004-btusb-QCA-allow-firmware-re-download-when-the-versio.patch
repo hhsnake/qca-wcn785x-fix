@@ -1,0 +1,35 @@
+From 4e33bccda19c1ec4d0ddddf707dc1b01570e2d12 Mon Sep 17 00:00:00 2001
+From: hhsnake <hhsnakeg@gmail.com>
+Date: Sun, 4 Oct 2026 17:28:08 +0300
+Subject: [PATCH 04/10] btusb: QCA: allow firmware re-download when the version
+ matches
+
+Backport of mainline 82855073c108 ("Bluetooth: btusb: Allow firmware
+re-download when version matches"): a download aborted by a transient
+USB error can leave the controller reporting the patch version already,
+which made the rampatch be rejected forever.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ drivers/bluetooth/btusb.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/bluetooth/btusb.c b/drivers/bluetooth/btusb.c
+index 8497590..a24d19e 100644
+--- a/drivers/bluetooth/btusb.c
++++ b/drivers/bluetooth/btusb.c
+@@ -3864,7 +3864,13 @@ static int btusb_setup_qca_load_rampatch(struct hci_dev *hdev,
+ 		    "firmware rome 0x%x build 0x%x",
+ 		    rver_rom, rver_patch, ver_rom, ver_patch);
+ 
+-	if (rver_rom != ver_rom || rver_patch <= ver_patch) {
++	/* Allow rampatch when the patch version equals the firmware version.
++	 * A firmware download may be aborted by a transient USB error (e.g.
++	 * disconnect) after the controller updates version info but before
++	 * completion.
++	 * Allowing equal versions enables re-flashing during recovery.
++	 */
++	if (rver_rom != ver_rom || rver_patch < ver_patch) {
+ 		bt_dev_err(hdev, "rampatch file version did not match with firmware");
+ 		err = -EINVAL;
+ 		goto done;

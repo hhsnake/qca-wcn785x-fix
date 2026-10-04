@@ -1,0 +1,38 @@
+From 9ff52e61f76c84a1861c277afee160347dc19500 Mon Sep 17 00:00:00 2001
+From: hhsnake <hhsnakeg@gmail.com>
+Date: Sun, 4 Oct 2026 17:28:08 +0300
+Subject: [PATCH 06/10] btusb: QCA: fix BD_ADDR byte order in
+ btusb_set_bdaddr_wcn6855()
+
+Backport of mainline d0b15d812688 ("Bluetooth: btusb: Fix BD_ADDR byte
+order in btusb_set_bdaddr_wcn6855()").
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ drivers/bluetooth/btusb.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/bluetooth/btusb.c b/drivers/bluetooth/btusb.c
+index e9dfa12..900235a 100644
+--- a/drivers/bluetooth/btusb.c
++++ b/drivers/bluetooth/btusb.c
+@@ -3396,14 +3396,15 @@ static int btusb_set_bdaddr_ath3012(struct hci_dev *hdev,
+ static int btusb_set_bdaddr_wcn6855(struct hci_dev *hdev,
+ 				const bdaddr_t *bdaddr)
+ {
++	bdaddr_t bdaddr_swapped;
+ 	struct sk_buff *skb;
+-	u8 buf[6];
+ 	long ret;
+ 
+-	memcpy(buf, bdaddr, sizeof(bdaddr_t));
++	baswap(&bdaddr_swapped, bdaddr);
+ 
+-	skb = __hci_cmd_sync_ev(hdev, 0xfc14, sizeof(buf), buf,
+-				HCI_EV_CMD_COMPLETE, HCI_INIT_TIMEOUT);
++	skb = __hci_cmd_sync_ev(hdev, 0xfc14, sizeof(bdaddr_swapped),
++				&bdaddr_swapped, HCI_EV_CMD_COMPLETE,
++				HCI_INIT_TIMEOUT);
+ 	if (IS_ERR(skb)) {
+ 		ret = PTR_ERR(skb);
+ 		bt_dev_err(hdev, "Change address command failed (%ld)", ret);

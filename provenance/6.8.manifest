@@ -1,0 +1,46 @@
+# Provenance of src/6.8 — the stock btusb sources of Ubuntu's 6.8.0-138 kernel
+# (linux-hwe-6.8 6.8.0-138.138~22.04.1), do not edit.
+#
+#   src/6.8 = vanilla v6.8 files (pinned by "vanilla" below)
+#           + the drivers/bluetooth hunks of Ubuntu's diff.gz (pinned by "ubuntu-diff")
+#
+# The result was confirmed against the binary: a btusb.ko built from src/6.8
+# has srcversion 336B8A418C3CF8CAEF8D88A, the same as
+# /lib/modules/6.8.0-138-generic/kernel/drivers/bluetooth/btusb.ko.
+#
+# tools/regen-base.sh rebuilds src/6.8 from these pins; tools/verify.sh checks
+# src/6.8 against the "file" hashes. Mirrors are tried in order; only the
+# sha256 is trusted.
+
+tag          v6.8
+commit       e8f897f4afef0031fe618a8e94127a0934896aba
+mirror       https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/plain/{path}?id={commit}
+mirror       https://raw.githubusercontent.com/torvalds/linux/{commit}/{path}
+
+ubuntu-diff  19c8278ca4465856e47cdd26da03be16ddcfa117e6a4f89939127b74290987cf  linux-hwe-6.8_6.8.0-138.138~22.04.1.diff.gz
+ubuntu-mirror  http://archive.ubuntu.com/ubuntu/pool/main/l/linux-hwe-6.8/{file}
+ubuntu-mirror  https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/linux-hwe-6.8/6.8.0-138.138~22.04.1/{file}
+
+# vanilla  <sha256 at v6.8>  <path-in-kernel-tree>
+vanilla  2ff9c2991c57f397355a09df8f6f6a26dd28348dddabda035bd21b8ca2cb4ae6  drivers/bluetooth/btusb.c
+vanilla  43ab94feac41161ff6adca55002b5494117da72b968a41c972144d92b51d574e  drivers/bluetooth/btbcm.h
+vanilla  12300030fca5ac7410ef7ca05f30846fa3614a066fb8dfef0c3fc4fc8b51ca81  drivers/bluetooth/btintel.h
+vanilla  0b594459efebc49b920d7c59c34cd6e10ff21ad4d4cda5026ac42fc1c2fec098  drivers/bluetooth/btmrvl_drv.h
+vanilla  df6f012feca029448cdb882f08a2aebff1413ada2ba6e5cd41136190c09f8b7c  drivers/bluetooth/btmrvl_sdio.h
+vanilla  206e90d9a2e52dfad8f5df5d8fa47d66ff6f5188e39479cae3caf53e30808436  drivers/bluetooth/btmtk.h
+vanilla  5c737853c030cc9a43899f466077e92f6782572b097d8f70362cdca7ef0c97b2  drivers/bluetooth/btqca.h
+vanilla  452d4467259f1da92f0f71bb566499f1fa0e1c89ec4f5bf7412ba8c5489daaa1  drivers/bluetooth/btrtl.h
+vanilla  0124e311996f7c5f98355bfee5bbaab910a699a2fd2e57ed6364aa03e44a97d7  drivers/bluetooth/h4_recv.h
+vanilla  0fc8ed232f3b7ecffebeb96d184dbfab3405e42100dcff7139661e5a7756bf43  drivers/bluetooth/hci_uart.h
+
+# file  <sha256 in src/6.8>  <path-in-kernel-tree>  <dest-in-src>
+file  656c9f6f608242849dc1a8078a563ef30ffc75c7b1fdb3585390d7df096c86b9  drivers/bluetooth/btusb.c  btusb.c
+file  43ab94feac41161ff6adca55002b5494117da72b968a41c972144d92b51d574e  drivers/bluetooth/btbcm.h  btbcm.h
+file  12300030fca5ac7410ef7ca05f30846fa3614a066fb8dfef0c3fc4fc8b51ca81  drivers/bluetooth/btintel.h  btintel.h
+file  0b594459efebc49b920d7c59c34cd6e10ff21ad4d4cda5026ac42fc1c2fec098  drivers/bluetooth/btmrvl_drv.h  btmrvl_drv.h
+file  df6f012feca029448cdb882f08a2aebff1413ada2ba6e5cd41136190c09f8b7c  drivers/bluetooth/btmrvl_sdio.h  btmrvl_sdio.h
+file  9000a44775642f1e4c561e0f689c2f5a1b94d1997a869e753a41c6b2f15cdb9d  drivers/bluetooth/btmtk.h  btmtk.h
+file  0239db593082ae68154fe9505b6cc109e89b21d5f508f49fa9a80a3496fd0e57  drivers/bluetooth/btqca.h  btqca.h
+file  452d4467259f1da92f0f71bb566499f1fa0e1c89ec4f5bf7412ba8c5489daaa1  drivers/bluetooth/btrtl.h  btrtl.h
+file  0124e311996f7c5f98355bfee5bbaab910a699a2fd2e57ed6364aa03e44a97d7  drivers/bluetooth/h4_recv.h  h4_recv.h
+file  ef785ff06382e498001584254fd83454ce5551efa9e2e1715550e75e7b637ce4  drivers/bluetooth/hci_uart.h  hci_uart.h

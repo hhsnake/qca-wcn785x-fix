@@ -1,0 +1,36 @@
+From 5e5d2b053719c6f441b00765c81c22c673deaf9f Mon Sep 17 00:00:00 2001
+From: hhsnake <hhsnakeg@gmail.com>
+Date: Sun, 4 Oct 2026 17:28:08 +0300
+Subject: [PATCH 09/10] btusb: QCA: pass 0x2EDC debug frames to the monitor
+
+Equivalent of mainline 0b00bee940cb ("Bluetooth: btusb: Reclassify
+Qualcomm WCN6855 debug packets"). Mainline reclassifies ACL frames with
+handle 0x2EDC as HCI_DIAG_PKT through hdev->classify_pkt_type, which 6.8
+does not have; divert them with hci_recv_diag() in btusb_recv_acl_qca()
+instead, so they stop showing up as "ACL packet for unknown connection
+handle 3804".
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ drivers/bluetooth/btusb.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/drivers/bluetooth/btusb.c b/drivers/bluetooth/btusb.c
+index dde95fd..8f98727 100644
+--- a/drivers/bluetooth/btusb.c
++++ b/drivers/bluetooth/btusb.c
+@@ -3624,6 +3624,14 @@ out:
+ 
+ static int btusb_recv_acl_qca(struct hci_dev *hdev, struct sk_buff *skb)
+ {
++	/* Some Qualcomm controllers send debug packets as ACL frames with
++	 * connection handle 0x2EDC; they are not real ACL data. Upstream
++	 * reclassifies them via hdev->classify_pkt_type (0b00bee940cb), which
++	 * 6.8 lacks, so hand them to the monitor as diag packets here.
++	 */
++	if (skb->len >= 2 && get_unaligned_le16(skb->data) == 0x2EDC)
++		return hci_recv_diag(hdev, skb);
++
+ 	if (acl_pkt_is_dump_qca(hdev, skb))
+ 		return handle_dump_pkt_qca(hdev, skb);
+ 	return hci_recv_frame(hdev, skb);
